@@ -1,23 +1,19 @@
 import OpenAI,{toFile} from "openai";
-import ffmpegStatic from "ffmpeg-static";
-import {spawn} from "child_process";
-import {writeFile,readFile,unlink,chmod} from "fs/promises";
-import path from "path";
+import {decode,inspect} from "dss-codec";
 export const runtime="nodejs";export const maxDuration=60;
-async function findFfmpeg(){
- const candidates=[ffmpegStatic,process.env.FFMPEG_PATH,"/var/task/node_modules/ffmpeg-static/ffmpeg","/var/task/node_modules/.bin/ffmpeg"].filter(Boolean);
- for(const p of candidates){try{await chmod(p,0o755);return p}catch{}}
- throw new Error("DSS-Konverter ist auf dem Server nicht verfügbar. Bitte Diktat als MP3, M4A oder WAV hochladen.");
+function wav(samples,rate){
+ const n=samples.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),s=(o,x)=>[...x].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+ s(0,"RIFF");v.setUint32(4,36+n*2,true);s(8,"WAVE");s(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,"data");v.setUint32(40,n*2,true);
+ for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,samples[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}return new Uint8Array(b)
 }
-async function convertDss(file){
- const base="/tmp/dict-"+crypto.randomUUID(),input=base+".dss",output=base+".wav";await writeFile(input,Buffer.from(await file.arrayBuffer()));
- try{const bin=await findFfmpeg();await new Promise((resolve,reject)=>{const p=spawn(bin,["-y","-i",input,"-ac","1","-ar","16000","-c:a","pcm_s16le",output]);let err="";p.stderr.on("data",d=>err+=d);p.on("error",reject);p.on("close",c=>c===0?resolve():reject(new Error("DSS-Datei konnte nicht dekodiert werden. "+err.slice(-350))))});const b=await readFile(output);return await toFile(b,path.parse(file.name).name+".wav",{type:"audio/wav"});}
- finally{await unlink(input).catch(()=>{});await unlink(output).catch(()=>{})}
+async function decodeDss(file){
+ const bytes=new Uint8Array(await file.arrayBuffer());const info=inspect(bytes);
+ try{if(info.encryption!=="none")throw new Error("Verschlüsselte DS2-Datei: Passwort-Unterstützung folgt.");const out=decode(bytes);try{return await toFile(wav(out.samples,out.nativeRate),file.name.replace(/\.(dss|ds2)$/i,"")+".wav",{type:"audio/wav"})}finally{out.free()}}finally{info.free()}
 }
 export async function POST(req){try{
  if(!process.env.OPENAI_API_KEY)return Response.json({error:"OPENAI_API_KEY fehlt in Vercel."},{status:500});
  const fd=await req.formData();let audio=fd.get("audio");const currentRoom=String(fd.get("currentRoom")||"");const nextInv=Number(fd.get("nextInv")||1);if(!audio)return Response.json({error:"Keine Audiodatei erhalten."},{status:400});
- if(String(audio.name||"").toLowerCase().endsWith(".dss"))audio=await convertDss(audio);
+ if(/\.(dss|ds2)$/i.test(String(audio.name||"")))audio=await decodeDss(audio);
  const client=new OpenAI({apiKey:process.env.OPENAI_API_KEY});const tr=await client.audio.transcriptions.create({file:audio,model:"gpt-4o-mini-transcribe",language:"de"});
  const prompt=`Du wandelst ein deutsches Inventar-Diktat in Datensätze für eine Insolvenz-Inventarliste um. Aktueller Raum: ${currentRoom||"nicht angegeben"}. Nächste Inventarnummer: ${nextInv}.
 Erkenne jede Position einzeln. Ein Raum gilt weiter bis ein neuer genannt wird. Verwende diktierte Inventarnummern, sonst fortlaufend. Bezeichnung: Gegenstandsart, Hersteller, Modell/Typ, Nr./Seriennummer, Baujahr, weitere sichere Angaben. Sammelpositionen bleiben eine Position. Nichts erfinden. Anzahl standardmäßig 1.
