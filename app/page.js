@@ -1,0 +1,15 @@
+"use client";
+import "./globals.css";
+import {useEffect,useState} from "react";
+export default function Home(){
+ const [room,setRoom]=useState(""); const [files,setFiles]=useState([]); const [items,setItems]=useState([]); const [busy,setBusy]=useState(false);
+ useEffect(()=>{setRoom(localStorage.getItem("inventar-room")||"");setItems(JSON.parse(localStorage.getItem("inventar-items")||"[]"))},[]);
+ const saveRoom=v=>{setRoom(v);localStorage.setItem("inventar-room",v)};
+ const persist=x=>{setItems(x);localStorage.setItem("inventar-items",JSON.stringify(x))};
+ const analyze=async()=>{if(!files.length)return;setBusy(true);let all=[];try{for(const f of files){const data=await new Promise((res,rej)=>{let r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});const q=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:data})});const j=await q.json();if(!q.ok)throw new Error(j.error||"Analyse fehlgeschlagen");for(const x of (j.items||[]))all.push({...x,room,id:crypto.randomUUID()})}persist([...all,...items]);setFiles([])}catch(e){alert(e.message)}finally{setBusy(false)}};
+ const csv=()=>{const rows=[["Raum","Bezeichnung","Hersteller","Typ","Nr.","Baujahr","Bemerkung"],...items.map(x=>[x.room,x.designation,x.manufacturer,x.model,x.serial,x.year,x.notes])];const s=rows.map(r=>r.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(";")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([s],{type:"text/csv;charset=utf-8"}));a.download="inventar.csv";a.click()};
+ return <main><div className="head"><h1>Inventar V3</h1><span className="badge">● bereit</span></div>
+ <div className="card"><label>Aktueller Raum</label><input value={room} onChange={e=>saveRoom(e.target.value)} placeholder="z. B. Werkstatt / Büro 1"/><div className="muted">Bleibt gespeichert, bis du ihn änderst.</div></div>
+ <div className="card"><h2>Foto-KI</h2><div className="muted">Mehrere Fotos oder Typenschilder auswählen. Die KI versucht getrennte Artikel anzulegen.</div><label>Fotos auswählen</label><input type="file" accept="image/*" multiple onChange={e=>setFiles([...e.target.files])}/>{files.length>0&&<p>{files.length} Foto(s) ausgewählt</p>}<button className="green" disabled={busy||!files.length} onClick={analyze}>{busy?"KI analysiert …":"Fotos analysieren & Artikel anlegen"}</button></div>
+ <div className="card"><div className="head"><h2>Inventar ({items.length})</h2>{items.length>0&&<button style={{width:"auto",margin:0}} className="secondary" onClick={csv}>CSV</button>}</div>{!items.length?<p className="muted">Noch keine Artikel erfasst.</p>:items.map(x=><div className="item" key={x.id}><strong>{x.designation||"Unbekannter Artikel"}</strong><div className="muted">{x.room||"Ohne Raum"}{x.serial?" · Nr. "+x.serial:""}{x.year?" · Bj. "+x.year:""}</div></div>)}</div></main>
+}
