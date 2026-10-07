@@ -19,7 +19,7 @@ export async function POST(req){try{
 Erkenne jede Position einzeln. Ein Raum gilt weiter bis ein neuer genannt wird. Verwende diktierte Inventarnummern, sonst fortlaufend.
 Regeln für die Bezeichnung:
 - Gegenstandsart zuerst, danach Hersteller, Modell/Typ, Nr./Seriennummer, Baujahr und ALLE weiteren diktierten Sachangaben.
-- Hersteller/Marken immer vollständig in GROSSBUCHSTABEN schreiben, z. B. HP, EPSON, BOSCH, SIEMENS.
+- NUR Hersteller/Marken vollständig in GROSSBUCHSTABEN schreiben, z. B. REXEL, HP, EPSON, BOSCH, SIEMENS. Modell- und Typbezeichnungen NICHT in Großbuchstaben umwandeln, sondern in ihrer normalen/offiziellen Schreibweise belassen. Beispiel: Aktenvernichter REXEL Optimum Autofeed Plus 50X (nicht REXEL OPTIMUM AUTOFEED PLUS 50X).
 - Diktierte Zollangaben als Zahl mit Zollzeichen schreiben: "24 Zoll" wird 24", "55 Zoll" wird 55".
 - Die CSV-Anzahl bzw. quantity ist IMMER "1", unabhängig von einer diktierten Stückzahl.
 - Wird eine Stückzahl diktiert, gehört sie stattdessen ans Ende der Bezeichnung, mit Komma davor. Beispiel: "12 Stück" -> Bezeichnung endet mit ", 12 Stück".
