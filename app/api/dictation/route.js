@@ -16,7 +16,16 @@ export async function POST(req){try{
  if(/\.(dss|ds2)$/i.test(String(audio.name||"")))audio=await decodeDss(audio);
  const client=new OpenAI({apiKey:process.env.OPENAI_API_KEY});const tr=await client.audio.transcriptions.create({file:audio,model:"gpt-4o-mini-transcribe",language:"de"});
  const prompt=`Du wandelst ein deutsches Inventar-Diktat in Datensätze für eine Insolvenz-Inventarliste um. Aktueller Raum: ${currentRoom||"nicht angegeben"}. Nächste Inventarnummer: ${nextInv}.
-Erkenne jede Position einzeln. Ein Raum gilt weiter bis ein neuer genannt wird. Verwende diktierte Inventarnummern, sonst fortlaufend. Bezeichnung: Gegenstandsart, Hersteller, Modell/Typ, Nr./Seriennummer, Baujahr, weitere sichere Angaben. Sammelpositionen bleiben eine Position. Nichts erfinden. Anzahl standardmäßig 1.
+Erkenne jede Position einzeln. Ein Raum gilt weiter bis ein neuer genannt wird. Verwende diktierte Inventarnummern, sonst fortlaufend.
+Regeln für die Bezeichnung:
+- Gegenstandsart zuerst, danach Hersteller, Modell/Typ, Nr./Seriennummer, Baujahr und ALLE weiteren diktierten Sachangaben.
+- Hersteller/Marken immer vollständig in GROSSBUCHSTABEN schreiben, z. B. HP, EPSON, BOSCH, SIEMENS.
+- Diktierte Zollangaben als Zahl mit Zollzeichen schreiben: "24 Zoll" wird 24", "55 Zoll" wird 55".
+- Die CSV-Anzahl bzw. quantity ist IMMER "1", unabhängig von einer diktierten Stückzahl.
+- Wird eine Stückzahl diktiert, gehört sie stattdessen ans Ende der Bezeichnung, mit Komma davor. Beispiel: "12 Stück" -> Bezeichnung endet mit ", 12 Stück".
+- notes/Bemerkungen bleibt IMMER leer, außer der Sprecher sagt ausdrücklich "Bemerkung", "in die Bemerkungen", "als Bemerkung" oder eindeutig sinngleich. Nur dann den ausdrücklich als Bemerkung genannten Inhalt dort eintragen.
+- Zustände, Maße, Zubehör, Defekte und sonstige Informationen gehören in die Bezeichnung, sofern sie nicht ausdrücklich als Bemerkung diktiert wurden.
+- Sammelpositionen bleiben eine Position. Nichts erfinden.
 Antworte nur JSON {"items":[{"invNr":"","designation":"","quantity":"1","room":"","notes":""}]}. Diktat: ${tr.text}`;
  const r=await client.responses.create({model:"gpt-5.4-mini",input:prompt});const parsed=JSON.parse(r.output_text.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,""));return Response.json({transcript:tr.text,items:parsed.items||[]});
 }catch(e){return Response.json({error:e.message||"Diktat konnte nicht verarbeitet werden."},{status:500})}}
