@@ -24,7 +24,7 @@ Regeln für die Bezeichnung:
 - Die CSV-Anzahl bzw. quantity ist IMMER "1", unabhängig von einer diktierten Stückzahl.
 - Wird eine Stückzahl diktiert, gehört sie stattdessen ans Ende der Bezeichnung, mit Komma davor. Beispiel: "12 Stück" -> Bezeichnung endet mit ", 12 Stück".
 - notes/Bemerkungen bleibt IMMER leer, außer der Sprecher sagt ausdrücklich "Bemerkung", "in die Bemerkungen", "als Bemerkung" oder eindeutig sinngleich. Nur dann den ausdrücklich als Bemerkung genannten Inhalt dort eintragen.
-- Zustände, Maße, Zubehör, Defekte und sonstige Informationen gehören in die Bezeichnung, sofern sie nicht ausdrücklich als Bemerkung diktiert wurden.
+- Zustände, Maße, Zubehör, Defekte und sonstige Informationen gehören in die Bezeichnung, sofern sie nicht ausdrücklich als Bemerkung diktiert wurden.\n- Einzelne Zusatzangaben in der Bezeichnung sauber mit Kommas trennen. Keine bloße Aneinanderreihung. Beispiel: Aktenvernichter REXEL Optimum Autofeed Plus 50X, 24\", gebraucht, 12 Stück. Auch Nr., Baujahr, technische Daten, Zubehör, Zustand und Schäden jeweils sinnvoll mit Komma absetzen.
 - Sammelpositionen bleiben eine Position. Nichts erfinden.
 Antworte nur JSON {"items":[{"invNr":"","designation":"","quantity":"1","room":"","notes":""}]}. Diktat: ${tr.text}`;
  const r=await client.responses.create({model:"gpt-5.4-mini",input:prompt});const parsed=JSON.parse(r.output_text.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,""));return Response.json({transcript:tr.text,items:parsed.items||[]});
